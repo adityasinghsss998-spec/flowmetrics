@@ -20,11 +20,11 @@ module.exports = {
          },
          password : {
           type:Sequelize.STRING(255),
-          allowNull:false,
+          allowNull:true,
          },
 
          github_id: {
-          type:Sequelize.INTEGER,
+          type:Sequelize.BIGINT,
           allowNull:true,
           unique:true
          },
