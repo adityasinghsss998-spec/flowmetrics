@@ -7,7 +7,7 @@ module.exports = {
            type:Sequelize.INTEGER,
            autoIncrement:true,
            primaryKey:true,
-           allowNull:false,
+           
          },
          name : {
           type:Sequelize.STRING(100),
@@ -46,7 +46,7 @@ module.exports = {
 
           avatar_url : {
             type:Sequelize.TEXT,
-            allowNull:false,
+            allowNull:true,
           },          
 
           created_at: {

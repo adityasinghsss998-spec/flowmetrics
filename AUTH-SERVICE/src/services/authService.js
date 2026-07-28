@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const dotenv = require('dotenv');
 const crypto = require('crypto');
-const { UserRepository } = require('../repositories/userRepository');
-const { OrgRepository } = require('../repositories/orgRepository');
+const {UserRepository}=require('../repository/userRepository')
+const {OrgRepository}=require('../repository/orgRepository')
 
 dotenv.config();
 
