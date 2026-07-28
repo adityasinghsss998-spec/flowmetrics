@@ -97,11 +97,9 @@ class WebhookService {
                 submitted_at: review.submitted_at,
             });
 
-            const firstReview = await this.reviewRepo.findFirstReviewForPr(pr.id);
-            if (firstReview) {
-                await this.prRepo.updateById(pr.id, {
-                    first_review_at: firstReview.submitted_at,
-                });
+            const firstReview=await this.reviewRepo.findFirstReviewForPr(pr.id);
+            if(firstReview){
+                await this.prRepo.updateById(pr.id,{first_review_at:firstReview.submitted_at});
             }
 
             console.log(`Review on PR #${pull_request.number} by ${review.user.login}`);

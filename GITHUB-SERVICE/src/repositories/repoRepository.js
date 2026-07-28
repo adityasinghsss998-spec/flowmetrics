@@ -39,7 +39,7 @@ class RepoRepository {
             throw e;
         }
     }
-
+ 
     async updateById(id, data) {
         try {
             await Repository.update(data, { where: { id } });

@@ -39,4 +39,4 @@ const getOrgRepos = async (req, res) => {
         res.status(500).json({ message: e.message });
     }
 };
- 
+ module.exports = { getAvailableRepos, connectRepo, disconnectRepo, getOrgRepos };
