@@ -67,6 +67,7 @@ class RepoService {
                 default_branch: repoData.default_branch,
                 is_private: repoData.private,
                 webhook_id: webhook.id,
+                github_access_token: githubAccessToken
             });
 
             this.syncHistoricalData(savedRepo, githubApi, owner, repo)

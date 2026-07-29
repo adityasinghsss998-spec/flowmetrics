@@ -4,6 +4,7 @@ const { PullRequestRepository } = require('../repositories/pullRequestRepository
 const { PrReviewRepository } = require('../repositories/prReviewRepository');
 const { DeploymentRepository } = require('../repositories/deploymentRepository');
 const dotenv = require('dotenv');
+const { GithubApiService } = require('./githubApiService');
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ class WebhookService {
         this.prRepo = new PullRequestRepository();
         this.reviewRepo = new PrReviewRepository();
         this.deploymentRepo = new DeploymentRepository();
+        this.commitRepo=new commitRepository();
     }
 
     verifySignature(payload, signature) {
@@ -49,7 +51,7 @@ class WebhookService {
                 : pull_request.state === 'closed' ? 'closed'
                 : 'open';
 
-            await this.prRepo.upsert({
+            const savedPr=await this.prRepo.upsert({
                 github_pr_id: pull_request.id,
                 repo_id: repo.id,
                 number: pull_request.number,
@@ -69,6 +71,47 @@ class WebhookService {
                 pr_merged_at: mergedAt,
                 pr_closed_at: pull_request.closed_at || null,
             });
+ 
+            if (action === 'closed' && pull_request.merged) {
+                const [owner, repoName] = repository.full_name.split('/');
+                const token=repo.github_access_token;
+                const githubApi=new GithubApiService(token);
+
+                const commits=await this.githubApi.getPrCommits(owner,repoName,pull_request.number);
+                for (const commit of commits) {
+                await this.commitRepo.upsert({
+                    sha: commit.sha,
+                    repo_id: repo.id,
+                    pr_id: savedPr.id,
+                    author_github_id: commit.author?.id || null,
+                    author_username: commit.author?.login || null,
+                    message: commit.commit.message,
+                    additions: commit.stats?.additions || 0,
+                    deletions: commit.stats?.deletions || 0,
+                    committed_at: commit.commit.author.date,
+                });
+
+               
+            }
+
+             const firstCommit = commits.sort(
+                (a, b) => new Date(a.commit.author.date) - new Date(b.commit.author.date)
+                  )[0];
+              if (firstCommit) {
+                const leadTime = this.calculateCycleTimeHours(
+                    firstCommit.commit.author.date,
+                    mergedAt
+                );
+
+                await this.prRepo.updateById(savedPr.id, {
+                    lead_time_hours: leadTime,
+                });
+            }
+                  
+                
+         
+                
+        }
 
             console.log(`PR #${pull_request.number} ${action} in ${repository.full_name}`);
         } catch (e) {

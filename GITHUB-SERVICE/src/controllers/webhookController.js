@@ -29,7 +29,7 @@ const handleWebhook = async(req,res)=>{
         } else if (event === 'deployment_status') {
             await webhookService.handleDeploymentStatus(req.body);
         }
-        
+         
     } catch (e) {
         console.log('Webhook processing error', e.message);
     }

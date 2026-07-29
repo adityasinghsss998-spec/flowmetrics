@@ -39,4 +39,26 @@ const getOrgRepos = async (req, res) => {
         res.status(500).json({ message: e.message });
     }
 };
+
+const connectRepo=async (req,res)=>{
+    try{
+       const result=await reposervice.connectRepo(
+        req.body.orgId,
+        req.headers['x-user-id'],
+        req.headers['x-github-token'],
+        req.body.fullName
+       )
+       res.status(201).json({
+            data: result,
+            message: 'Repository connected. Historical sync running in background.',
+        });
+    }catch(e){
+        res.status(400).json({
+            data:{},
+            error:e.message,
+            message:"something went wrong while connecting to the repos"
+        })
+    }
+}
+
  module.exports = { getAvailableRepos, connectRepo, disconnectRepo, getOrgRepos };
