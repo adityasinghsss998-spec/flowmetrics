@@ -1,26 +1,47 @@
-const {RepoService}=require('../services/repoService')
-const reposervice=new RepoService();
+const { RepoService } = require('../services/repoService');
+const repoService = new RepoService();
 
-const getAvailableRepos=async(req,res)=>{
-    try{
-        const accesstoken=req.headers['x-github-token'];
-      const repos=await reposervice.getAvailableRepos(accesstoken);
-      return res.status(200).json({
-        data:repos,
-        message:"Repositories fetched successfully",
-        err:{}
-      })
-    }catch(e){
-        res.status(400).json({
-            data:{},
-            error:e,
-            message:"something went wrong while connecting to the repos"
-        })
+const getAvailableRepos = async (req, res) => {
+    try {
+        const result = await repoService.getAvailableRepos(
+            req.headers['x-github-token']
+        );
+        res.status(200).json({ data: result });
+    } catch (e) {
+        res.status(400).json({ message: e.message });
+    }
+};
+
+const connectRepo = async (req, res) => {
+    try {
+        const result = await repoService.connectRepo(
+            req.verifiedOrgId,
+            req.headers['x-user-id'],
+            req.headers['x-github-token'],
+            req.body.fullName
+        );
+        res.status(201).json({
+            data: result,
+            message: 'Repository connected. Historical sync running in background.',
+        });
+    } catch (e) {
+        res.status(400).json({ message: e.message });
     }
 };
 
 const disconnectRepo = async (req, res) => {
     try {
+        const repo = await repoService.getRepoById(req.params.id);
+        if (!repo) {
+            return res.status(404).json({ message: 'Repository not found' });
+        }
+
+        if (repo.org_id !== req.verifiedOrgId) {
+            return res.status(403).json({
+                message: 'This repository does not belong to your organization',
+            });
+        }
+
         await repoService.disconnectRepo(
             req.params.id,
             req.headers['x-github-token']
@@ -33,32 +54,11 @@ const disconnectRepo = async (req, res) => {
 
 const getOrgRepos = async (req, res) => {
     try {
-        const result = await repoService.getOrgRepos(req.params.orgId);
+        const result = await repoService.getOrgRepos(req.verifiedOrgId);
         res.status(200).json({ data: result });
     } catch (e) {
         res.status(500).json({ message: e.message });
     }
 };
 
-const connectRepo=async (req,res)=>{
-    try{
-       const result=await reposervice.connectRepo(
-        req.body.orgId,
-        req.headers['x-user-id'],
-        req.headers['x-github-token'],
-        req.body.fullName
-       )
-       res.status(201).json({
-            data: result,
-            message: 'Repository connected. Historical sync running in background.',
-        });
-    }catch(e){
-        res.status(400).json({
-            data:{},
-            error:e.message,
-            message:"something went wrong while connecting to the repos"
-        })
-    }
-}
-
- module.exports = { getAvailableRepos, connectRepo, disconnectRepo, getOrgRepos };
+module.exports = { getAvailableRepos, connectRepo, disconnectRepo, getOrgRepos };

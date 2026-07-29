@@ -203,6 +203,15 @@ class RepoService {
             throw e;
         }
     }
+
+    async getRepoById(repoId) {
+    try {
+        return await this.repoRepo.findById(repoId);
+    } catch (e) {
+        console.log('Something went wrong at the service layer', e);
+        throw e;
+    }
+}
 }
 
 module.exports = { RepoService };
