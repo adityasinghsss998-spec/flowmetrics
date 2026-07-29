@@ -15,4 +15,6 @@ router.get('/orgs', orgController.getMyOrgs);
 router.get('/orgs/:slug', orgController.getOrg);
 router.post('/orgs/:orgId/members', orgController.inviteMember);
 
+router.get('/internal/orgs/:orgId/members/:userId/role',orgController.getRole);
+
 module.exports = router;

@@ -78,6 +78,21 @@ class OrgRepository {
             throw e;
         }
     }
+    async getrole(orgId,userId){
+        try{
+
+        const member=await OrgMember.findOne({
+            where:{
+                org_id:orgId,
+                user_id:userId
+            }
+        });
+        return member? member.role:null;
+    }catch(e){
+        console.log('Something went wrong at the repo layer', e);
+        throw e;
+    }
+}
 }
 
 module.exports = { OrgRepository };

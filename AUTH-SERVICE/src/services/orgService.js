@@ -72,6 +72,16 @@ class OrgService {
             console.log('Something went wrong at the service layer', e);
             throw e;
         }
+        
+    }
+
+    async getRole(orgId,userId){
+        try{
+            return await this.orgRepo.getrole(orgId,userId)
+        }catch(e){
+            console.log('Something went wrong at the service layer', e);
+            throw e;
+        }
     }
 }
 

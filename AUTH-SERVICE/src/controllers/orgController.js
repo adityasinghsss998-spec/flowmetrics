@@ -48,5 +48,20 @@ const inviteMember = async (req, res) => {
         res.status(400).json({ message: e.message });
     }
 };
+const getRole=async(req,res)=>{ 
+    try{
+        const {orgId,userId}=req.params;
+        const role=await authService.getRole(orgId,userId);
+        if (!role) {
+            return res.status(404).json({
+                data: null,
+                message: 'User is not a member of this organization',
+            });
+        }
+        res.status(200).json({data:role,message:'Role fetched successfully'});
+    }catch(e){
+        res.status(400).json({message:e.message});
+    }
+}
 
-module.exports = { createOrg, getMyOrgs, getOrg, inviteMember };
+module.exports = { createOrg, getMyOrgs, getOrg, inviteMember,getRole };
