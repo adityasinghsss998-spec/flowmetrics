@@ -11,7 +11,7 @@ const requireOrgRole = (allowedRoles) => {
             const orgId = req.body.orgId || req.params.orgId || req.query.orgId;
             if (!orgId) {
                 return res.status(400).json({ message: 'orgId is required' });
-            }
+            } 
 
             const response = await authClient.get(
                 `/api/v1/internal/orgs/${orgId}/members/${userId}/role`

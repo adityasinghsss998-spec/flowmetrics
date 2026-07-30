@@ -5,7 +5,7 @@ const { PrReviewRepository } = require('../repositories/prReviewRepository');
 const { DeploymentRepository } = require('../repositories/deploymentRepository');
 const dotenv = require('dotenv');
 const { GithubApiService } = require('./githubApiService');
-
+const {CommitRepository} = require('../repositories/commitRepository')
 dotenv.config();
 
 class WebhookService {
@@ -14,7 +14,7 @@ class WebhookService {
         this.prRepo = new PullRequestRepository();
         this.reviewRepo = new PrReviewRepository();
         this.deploymentRepo = new DeploymentRepository();
-        this.commitRepo=new commitRepository();
+        this.commitRepo=new CommitRepository();
     }
 
     verifySignature(payload, signature) {
@@ -159,15 +159,28 @@ class WebhookService {
             const repo = await this.repoRepo.findByGithubId(repository.id);
             if (!repo) return;
 
-            await this.deploymentRepo.upsert({
-                github_deployment_id: deployment.id,
-                repo_id: repo.id,
-                environment: deployment.environment || 'production',
-                status: 'pending',
-                sha: deployment.sha,
-                deployed_by_username: deployment.creator?.login || null,
-                deployed_at: deployment.created_at,
-            });
+            const { deployment: savedDeployment, created } =
+                await this.deploymentRepo.createIfNotExists({
+                    github_deployment_id: deployment.id,
+                    repo_id: repo.id,
+                    environment: deployment.environment || 'production',
+                    status: 'pending',
+                    sha: deployment.sha,
+                    deployed_by_username: deployment.creator?.login || null,
+                    deployed_at: deployment.created_at,
+                    completed_at: null,
+                    build_duration_minutes: null,
+                });
+                if (created) {
+                console.log(
+                    `Deployment #${deployment.id} initiated in ${repository.full_name} ` +
+                    `env: ${deployment.environment} at ${deployment.created_at}`
+                );
+            } else {
+                console.log(
+                    `Deployment #${deployment.id} already exists — skipping creation`
+                );
+            }
 
             console.log(`Deployment in ${repository.full_name} env: ${deployment.environment}`);
         } catch (e) {
@@ -183,17 +196,47 @@ class WebhookService {
             const repo = await this.repoRepo.findByGithubId(repository.id);
             if (!repo) return;
 
-            const existing = await this.deploymentRepo.upsert({
-                github_deployment_id: deployment.id,
-                repo_id: repo.id,
-                environment: deployment.environment || 'production',
-                status: deployment_status.state,
-                sha: deployment.sha,
-                deployed_by_username: deployment.creator?.login || null,
-                deployed_at: deployment.created_at,
-            });
+            const completedAt = deployment_status.created_at;
+            const deployedAt = deployment.created_at;
 
-            console.log(`Deployment status: ${deployment_status.state} in ${repository.full_name}`);
+            const buildDurationMinutes = this.calculateMinutesDiff(
+                deployedAt,
+                completedAt
+            );
+
+            const updated = await this.deploymentRepo.updateStatus(
+                deployment.id,
+                {
+                    status: deployment_status.state,
+                    completed_at: completedAt,
+                    build_duration_minutes: buildDurationMinutes,
+                }
+            );
+
+            if (!updated) {
+                console.log(
+                    `Deployment #${deployment.id} not found — ` +
+                    `deployment event may have been missed. Creating stub.`
+                );
+
+                await this.deploymentRepo.createIfNotExists({
+                    github_deployment_id: deployment.id,
+                    repo_id: repo.id,
+                    environment: deployment.environment || 'production',
+                    status: deployment_status.state,
+                    sha: deployment.sha,
+                    deployed_by_username: deployment.creator?.login || null,
+                    deployed_at: deployedAt,
+                    completed_at: completedAt,
+                    build_duration_minutes: buildDurationMinutes,
+                });
+            }
+
+            console.log(
+                `Deployment #${deployment.id} ${deployment_status.state} ` +
+                `in ${repository.full_name} — ` +
+                `build duration: ${buildDurationMinutes} minutes`
+            );
         } catch (e) {
             console.log('Error handling deployment_status webhook', e.message);
             throw e;

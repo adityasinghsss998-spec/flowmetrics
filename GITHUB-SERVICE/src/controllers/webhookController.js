@@ -34,3 +34,4 @@ const handleWebhook = async(req,res)=>{
         console.log('Webhook processing error', e.message);
     }
 }
+module.exports={handleWebhook}

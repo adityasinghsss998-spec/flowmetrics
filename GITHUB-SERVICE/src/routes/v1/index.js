@@ -1,7 +1,7 @@
 const router = require('express').Router();
-const repoController = require('../../controllers/repoController');
-const webhookController = require('../../controllers/webhookController');
-const { requireOrgRole } = require('../../middlewares/requireOrgRole');
+const repoController = require('../../controllers/repoController')
+const webhookController = require('../../controllers/webhookController')
+const { requireOrgRole } = require('../../middlewares/requireOrgRole')
 
 router.get('/repos/available', repoController.getAvailableRepos);
 

@@ -67,6 +67,6 @@ class CommitRepository{
             console.log('Something went wrong at the repo layer', e);
             throw e;
         }
-    }
+    }    
 }
 module.exports={CommitRepository}

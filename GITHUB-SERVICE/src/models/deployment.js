@@ -42,6 +42,14 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATE,
             allowNull: false,
         },
+        completed_at: {
+            type: DataTypes.DATE,
+            allowNull: true,
+        },
+        build_duration_minutes: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+        },
     }, {
         sequelize,
         modelName: 'Deployment',
