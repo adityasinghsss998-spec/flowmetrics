@@ -179,9 +179,7 @@ class RepoService {
 
     async disconnectRepo(repoId, githubAccessToken) {
         try {
-            const repo = await this.repoRepo.findById(repoId);
-            if (!repo) throw new Error('Repository not found');
-
+            const repo=await this.repoRepo.findByGithubId(repoId);
             if (repo.webhook_id) {
                 const [owner, repoName] = repo.full_name.split('/');
                 const githubApi = new GithubApiService(githubAccessToken);
@@ -206,7 +204,7 @@ class RepoService {
 
     async getRepoById(repoId) {
     try {
-        return await this.repoRepo.findById(repoId);
+        return await this.repoRepo.findByGithubId(repoId)
     } catch (e) {
         console.log('Something went wrong at the service layer', e);
         throw e;

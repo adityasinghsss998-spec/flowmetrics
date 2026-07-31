@@ -1,6 +1,5 @@
 const { OrgService } = require('../services/orgService');
 const orgService = new OrgService();
-
 const createOrg = async (req, res) => {
     try {
         
@@ -33,7 +32,7 @@ const getOrg = async (req, res) => {
         res.status(200).json({ data: result });
     } catch (e) {
         res.status(404).json({ message: e.message });
-    }
+    } 
 };
 
 const inviteMember = async (req, res) => {
@@ -51,7 +50,7 @@ const inviteMember = async (req, res) => {
 const getRole=async(req,res)=>{ 
     try{
         const {orgId,userId}=req.params;
-        const role=await authService.getRole(orgId,userId);
+        const role=await orgService.getRole(orgId,userId);
         if (!role) {
             return res.status(404).json({
                 data: null,
