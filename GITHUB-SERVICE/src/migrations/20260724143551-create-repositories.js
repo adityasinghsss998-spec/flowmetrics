@@ -17,22 +17,10 @@ module.exports = {
             org_id: {
                 type: Sequelize.INTEGER,
                 allowNull: false,
-                references: {
-                    model: 'organizations',
-                    key: 'id',
-                },
-                onUpdate: 'CASCADE',
-                onDelete: 'CASCADE',
             },
             owner_id: {
                 type: Sequelize.INTEGER,
-                allowNull: true,
-                references: {
-                    model: 'users',
-                    key: 'id',
-                },
-                onUpdate: 'CASCADE',
-                onDelete: 'SET NULL',
+                allowNull: false,
             },
             name: {
                 type: Sequelize.STRING(255),

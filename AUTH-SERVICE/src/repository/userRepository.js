@@ -1,4 +1,4 @@
-const { User } = require('../models');
+const { User, OrgMember } = require('../models');
 
 class UserRepository {
     async create(data) {
@@ -51,6 +51,8 @@ class UserRepository {
             throw e;
         }
     }
+
+    
 }
 
 module.exports = { UserRepository };

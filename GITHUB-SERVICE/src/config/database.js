@@ -23,8 +23,7 @@ const sequelize = new Sequelize(
 const connect = async () => {
     try {
         await sequelize.authenticate();
-        // await sequelize.sync({ alter: true });
-        console.log('MySQL connected successfully');
+        console.log('GitHub Service MySQL connected');
     } catch (err) {
         console.error('Database connection failed:', err.message);
         process.exit(1);
