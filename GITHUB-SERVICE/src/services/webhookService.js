@@ -33,6 +33,12 @@ class WebhookService {
         const diff = new Date(mergedAt) - new Date(openedAt);
         return Math.round((diff / (1000 * 60 * 60)) * 100) / 100;
     }
+    calculateMinutesDiff(startAt, endAt) {
+        if (!startAt || !endAt) return null;
+        const diff = new Date(endAt) - new Date(startAt);
+        if (Number.isNaN(diff)) return null;
+        return Math.round((diff / (1000 * 60)) * 100) / 100;
+    }
 
     async handlePullRequest(payload) {
         try {
