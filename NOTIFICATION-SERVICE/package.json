@@ -12,19 +12,20 @@
     "db:seed": "sequelize-cli db:seed:all",
     "db:seed:undo": "sequelize-cli db:seed:undo:all",
     "db:reset": "sequelize-cli db:migrate:undo:all && sequelize-cli db:migrate && sequelize-cli db:seed:all"
-},
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "amqplib": "^2.0.1",
+    "axios": "^1.19.0",
     "body-parser": "^2.3.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^5.11.1",
     "mysql2": "^3.23.1",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^9.0.4",
     "sequelize": "^6.37.8",
     "sequelize-cli": "^6.6.5"
   },

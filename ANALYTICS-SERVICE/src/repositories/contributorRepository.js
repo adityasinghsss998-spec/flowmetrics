@@ -58,7 +58,7 @@ class ContributorRepository {
                     ) as fastest_review_hours
                 FROM pr_reviews r
                 JOIN pull_requests pr ON pr.id = r.pr_id
-                WHERE r.repo_id = :repoId
+                WHERE pr.repo_id = :repoId
                 AND r.submitted_at > NOW() - INTERVAL :days DAY
                 GROUP BY r.reviewer_username
                 ORDER BY total_reviews DESC
@@ -89,7 +89,7 @@ class ContributorRepository {
                     ) as avg_turnaround_hours
                 FROM pr_reviews r
                 JOIN pull_requests pr ON pr.id = r.pr_id
-                WHERE r.repo_id = :repoId
+                WHERE pr.repo_id = :repoId
                 AND r.submitted_at > NOW() - INTERVAL :days DAY
                 GROUP BY
                     DAYOFWEEK(r.submitted_at),

@@ -3,7 +3,10 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis(process.env.REDIS_URL, {
+    keepAlive: 10000,
+    retryStrategy: (t) => Math.min(t * 50, 2000)
+});
 
 redis.on('connect', () => console.log('Analytics Redis connected'));
 redis.on('error', (e) => console.log('Analytics Redis error', e.message));
