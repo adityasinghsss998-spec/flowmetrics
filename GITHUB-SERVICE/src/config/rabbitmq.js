@@ -1,34 +1,43 @@
-const express = require('express');
-const http = require('http');
+const amqp = require('amqplib');
 const dotenv = require('dotenv');
-const { connect: connectRabbit } = require('./config/rabbitmq');
-const { init: initSocket } = require('./socket/dashboardSocket');
-const eventConsumer = require('./consumers/eventConsumer');
 
 dotenv.config();
 
-const app = express();
-const server = http.createServer(app);
+let channel = null;
 
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'dashboard-service running' });
-});
-
-const start = async () => {
+const connect = async () => {
     try {
-        await connectRabbit();
+        const conn = await amqp.connect(process.env.RABBITMQ_URL);
 
-        initSocket(server);
-
-        await eventConsumer.start();
-
-        server.listen(process.env.PORT, () => {
-            console.log(`Dashboard Service running on port ${process.env.PORT}`);
+        conn.on('error', (err) => {
+            console.log('GitHub Service RabbitMQ error:', err.message);
         });
+
+        channel = await conn.createChannel();
+        await channel.assertExchange('flowmetrics', 'topic', { durable: true });
+
+        console.log('GitHub Service RabbitMQ connected');
     } catch (e) {
-        console.log('Dashboard Service failed to start:', e.message);
-        process.exit(1);
+        console.log('GitHub Service RabbitMQ connection failed:', e.message);
+        throw e;
     }
 };
 
-start();
+const publish = (routingKey, data) => {
+    try {
+        if (!channel) throw new Error('RabbitMQ channel not initialized');
+
+        channel.publish(
+            'flowmetrics',
+            routingKey,
+            Buffer.from(JSON.stringify(data)),
+            { persistent: true }
+        );
+
+        console.log(`Published event: ${routingKey}`);
+    } catch (e) {
+        console.log('Failed to publish event:', e.message);
+    }
+};
+
+module.exports = { connect, publish };

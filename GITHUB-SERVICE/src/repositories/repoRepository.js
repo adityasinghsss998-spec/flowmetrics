@@ -58,6 +58,15 @@ class RepoRepository {
             throw e;
         }
     }
+
+    async findAll() {
+    try {
+        return await Repository.findAll();
+    } catch (e) {
+        console.log('Something went wrong at the repo layer', e);
+        throw e;
+    }
+}
 }
 
 module.exports = { RepoRepository };

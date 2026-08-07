@@ -21,6 +21,12 @@ const connect = async () => {
         channel = await connection.createChannel();
 
         await channel.assertExchange('flowmetrics', 'topic', { durable: true });
+        
+        await channel.assertExchange('flowmetrics.dlx', 'topic', { durable: true });
+        await channel.assertQueue('dlq.weekly_digest', { durable: true });
+        await channel.assertQueue('dlq.anomaly_alert', { durable: true });
+        await channel.bindQueue('dlq.weekly_digest', 'flowmetrics.dlx', 'dlq.weekly_digest');
+        await channel.bindQueue('dlq.anomaly_alert', 'flowmetrics.dlx', 'dlq.anomaly_alert');
 
         console.log('Notification Service RabbitMQ connected');
         return channel;
