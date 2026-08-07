@@ -2,9 +2,15 @@ const Redis = require('ioredis');
 const dotenv = require('dotenv');
 
 dotenv.config();
+const redisOptions = {
+    keepAlive: 10000,
+    retryStrategy: (times) => {
+        return Math.min(times * 50, 2000); 
+    }
+};
 
-const pub = new Redis(process.env.REDIS_URL);
-const sub = new Redis(process.env.REDIS_URL);
+const pub = new Redis(process.env.REDIS_URL,redisOptions);
+const sub = new Redis(process.env.REDIS_URL,redisOptions);
 
 pub.on('connect', () => console.log('Dashboard Redis publisher connected'));
 sub.on('connect', () => console.log('Dashboard Redis subscriber connected'));

@@ -3,9 +3,9 @@ const { getChannel } = require('../config/rabbitmq');
 const { sendMail } = require('../config/mailer');
 const { generateWeeklyDigestHtml } = require('../templates/weeklyDigest');
 const dotenv = require('dotenv');
-
+      
 dotenv.config();
-
+            
 const fetchMetricsForDigest = async (repoId) => {
     try {
         const [doraRes, openPrsRes] = await Promise.all([
@@ -26,7 +26,7 @@ const fetchMetricsForDigest = async (repoId) => {
         throw e;
     }
 };
-
+  
 const start = async () => {
     const ch = getChannel();
 
@@ -81,7 +81,7 @@ const start = async () => {
                 subject: `FlowMetrics Weekly Digest — ${repoName} (${weekStart})`,
                 html,
             });
-
+ 
             ch.ack(msg);
             console.log(`Weekly digest sent to ${recipientEmail}`);
         } catch (e) {
@@ -89,8 +89,9 @@ const start = async () => {
             ch.nack(msg, false, false);
         }
     });
-
+ 
     console.log('Weekly digest consumer listening...');
 };
-
-module.exports = { start };
+    
+module.exports = { start }; 
+ 
