@@ -7,7 +7,7 @@ const dotenv = require('dotenv');
 const { GithubApiService } = require('./githubApiService');
 const {CommitRepository} = require('../repositories/commitRepository')
 dotenv.config();
-
+const {publish}=require('../config/rabbitmq')
 class WebhookService {
     constructor() {
         this.repoRepo = new RepoRepository();
@@ -32,6 +32,12 @@ class WebhookService {
         if (!openedAt || !mergedAt) return null;
         const diff = new Date(mergedAt) - new Date(openedAt);
         return Math.round((diff / (1000 * 60 * 60)) * 100) / 100;
+    }
+    calculateMinutesDiff(startAt, endAt) {
+        if (!startAt || !endAt) return null;
+        const diff = new Date(endAt) - new Date(startAt);
+        if (Number.isNaN(diff)) return null;
+        return Math.round((diff / (1000 * 60)) * 100) / 100;
     }
 
     async handlePullRequest(payload) {
@@ -77,7 +83,7 @@ class WebhookService {
                 const token=repo.github_access_token;
                 const githubApi=new GithubApiService(token);
 
-                const commits=await this.githubApi.getPrCommits(owner,repoName,pull_request.number);
+                const commits=await githubApi.getPrCommits(owner,repoName,pull_request.number);
                 for (const commit of commits) {
                 await this.commitRepo.upsert({
                     sha: commit.sha,
@@ -106,14 +112,19 @@ class WebhookService {
                 await this.prRepo.updateById(savedPr.id, {
                     lead_time_hours: leadTime,
                 });
-            }
-                  
-                
-         
-                
+            }   
         }
+         publish('pr.merged', {
+                repoId: repo.id,
+                prNumber: pull_request.number,
+                authorUsername: pull_request.user.login,
+                cycleTimeHours: cycleTime,
+                 mergedAt: mergedAt,
+        });
 
-            console.log(`PR #${pull_request.number} ${action} in ${repository.full_name}`);
+
+
+         console.log(`PR #${pull_request.number} ${action} in ${repository.full_name}`);
         } catch (e) {
             console.log('Error handling pull_request webhook', e.message);
             throw e;
@@ -236,6 +247,21 @@ class WebhookService {
                 `Deployment #${deployment.id} ${deployment_status.state} ` +
                 `in ${repository.full_name} — ` +
                 `build duration: ${buildDurationMinutes} minutes`
+            );
+
+
+            publish(
+                     deployment_status.state === 'success'
+                            ?  'deployment.completed'
+                            : 'deployment.failed',
+                    {
+                        repoId: repo.id,
+                        environment: deployment.environment,
+                        status: deployment_status.state,
+                        buildDurationMinutes: buildDurationMinutes,
+                        deployedAt: deployment.created_at,
+                        completedAt: completedAt,
+                  }
             );
         } catch (e) {
             console.log('Error handling deployment_status webhook', e.message);

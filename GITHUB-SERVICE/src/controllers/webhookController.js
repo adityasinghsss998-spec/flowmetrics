@@ -32,6 +32,7 @@ const handleWebhook = async(req,res)=>{
          
     } catch (e) {
         console.log('Webhook processing error', e.message);
+        return res.status(400).json({ message: 'Webhook processing failed' });
     }
 }
 module.exports={handleWebhook}
