@@ -3,6 +3,7 @@ const repoService = new RepoService();
 
 const getAvailableRepos = async (req, res) => {
     try {
+        console.log(req.headers['x-github-token']); 
         const result = await repoService.getAvailableRepos(
             req.headers['x-github-token']
         );
@@ -14,6 +15,7 @@ const getAvailableRepos = async (req, res) => {
 
 const connectRepo = async (req, res) => {
     try {
+        console.log(req.headers['x-github-token']);
         const result = await repoService.connectRepo(
             req.verifiedOrgId,
             req.headers['x-user-id'],

@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const crypto = require('crypto');
 const {UserRepository}=require('../repository/userRepository')
 const {OrgRepository}=require('../repository/orgRepository')
-
+const { setGithubToken } = require('../config/redis');
 dotenv.config();
 
 const DUMMY_HASH = '$2b$10$e7xX3h8z8M0eBq2K3J7O0uYwA1bC2d3e4f5g6h7i8j9k0l1m2n3o4';
@@ -18,7 +18,7 @@ class AuthService {
     }
 
     signAccess(payload) {
-        return jwt.sign(payload, process.env.ACCESS_SECRET, { expiresIn: '15m' });
+        return jwt.sign(payload, process.env.ACCESS_SECRET, { expiresIn: '7d' });
     }
 
     signRefresh(payload) {
@@ -89,7 +89,7 @@ class AuthService {
         return `https://github.com/login/oauth/authorize?${params.toString()}`;
     }
 
-    async handleGithubCallback(code) {
+    async handleGithubCallback(code, existingUserId = null) {
         try {
             const tokenRes = await axios.post(
                 'https://github.com/login/oauth/access_token',
@@ -116,49 +116,61 @@ class AuthService {
             });
 
             const githubProfile = profileRes.data;
+            let user;
 
-            let user = await this.userRepo.findByGithubId(githubProfile.id);
-
-            if (!user) {
-                const emailRes = await axios.get('https://api.github.com/user/emails', {
-                    headers: {
-                        Authorization: `Bearer ${githubAccessToken}`,
-                        Accept: 'application/vnd.github+json',
-                    },
-                    timeout: REQUEST_TIMEOUT,
-                });
-
-                const verifiedPrimaryEmail = emailRes.data.find(
-                    (e) => e.primary && e.verified
-                )?.email;
-
-                if (verifiedPrimaryEmail) {
-                    user = await this.userRepo.findByEmail(verifiedPrimaryEmail);
-                }
-
-                if (user) {
-                    user = await this.userRepo.updateById(user.id, {
-                        github_id: githubProfile.id,
-                        github_username: githubProfile.login,
-                        github_access_token: githubAccessToken,
-                        avatar_url: githubProfile.avatar_url,
-                    });
-                } else {
-                    user = await this.userRepo.create({
-                        name: githubProfile.name || githubProfile.login,
-                        email: verifiedPrimaryEmail || `${githubProfile.login}@github.local`,
-                        github_id: githubProfile.id,
-                        github_username: githubProfile.login,
-                        github_access_token: githubAccessToken,
-                        avatar_url: githubProfile.avatar_url,
-                    });
-                }
-            } else {
-                user = await this.userRepo.updateById(user.id, {
+            if (existingUserId) {
+                user = await this.userRepo.updateById(existingUserId, {
+                    github_id: githubProfile.id,
+                    github_username: githubProfile.login,
                     github_access_token: githubAccessToken,
                     avatar_url: githubProfile.avatar_url,
                 });
+            } else {
+                user = await this.userRepo.findByGithubId(githubProfile.id);
+
+                if (!user) {
+                    const emailRes = await axios.get('https://api.github.com/user/emails', {
+                        headers: {
+                            Authorization: `Bearer ${githubAccessToken}`,
+                            Accept: 'application/vnd.github+json',
+                        },
+                        timeout: REQUEST_TIMEOUT,
+                    });
+
+                    const verifiedPrimaryEmail = emailRes.data.find(
+                        (e) => e.primary && e.verified
+                    )?.email;
+
+                    if (verifiedPrimaryEmail) {
+                        user = await this.userRepo.findByEmail(verifiedPrimaryEmail);
+                    }
+
+                    if (user) {
+                        user = await this.userRepo.updateById(user.id, {
+                            github_id: githubProfile.id,
+                            github_username: githubProfile.login,
+                            github_access_token: githubAccessToken,
+                            avatar_url: githubProfile.avatar_url,
+                        });
+                    } else {
+                        user = await this.userRepo.create({
+                            name: githubProfile.name || githubProfile.login,
+                            email: verifiedPrimaryEmail || `${githubProfile.login}@github.local`,
+                            github_id: githubProfile.id,
+                            github_username: githubProfile.login,
+                            github_access_token: githubAccessToken,
+                            avatar_url: githubProfile.avatar_url,
+                        });
+                    }
+                } else {
+                    user = await this.userRepo.updateById(user.id, {
+                        github_access_token: githubAccessToken,
+                        avatar_url: githubProfile.avatar_url,
+                    });
+                }
             }
+
+            await setGithubToken(user.id, githubAccessToken);
 
             const payload = {
                 id: user.id,

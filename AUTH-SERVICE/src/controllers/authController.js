@@ -28,14 +28,19 @@ const githubRedirect = (req, res) => {
 
 const githubCallback = async (req, res) => {
     try {
-        const { code } = req.query;
+        const { code ,state} = req.query;
         if (!code) throw new Error('No code received from GitHub');
+        const existingUserId = state && state !== 'login' ? parseInt(state, 10) : null;
 
-        const result = await authService.handleGithubCallback(code);
-
+        const result = await authService.handleGithubCallback(code, existingUserId);
+        if (existingUserId) {
+            res.redirect(`${process.env.CLIENT_URL}/settings/github?connected=true`);
+        }
+        else{
         res.redirect(
             `${process.env.CLIENT_URL}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`
         );
+    }
     } catch (e) {
         res.redirect(`${process.env.CLIENT_URL}/login?error=${encodeURIComponent(e.message)}`);
     }
@@ -74,6 +79,16 @@ const me = async (req, res) => {
     }
 };
 
+const githubConnectRedirect = (req, res) => {
+    const userId = req.headers['x-user-id'];
+    const params = new URLSearchParams({
+        client_id: process.env.GITHUB_CLIENT_ID,
+        redirect_uri: process.env.GITHUB_CALLBACK_URL,
+        scope: 'repo read:org user:email',
+        state: String(userId),
+    });
+    res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
+};
 
  
-module.exports = { register, login, githubRedirect, githubCallback, refresh, logout, me };
+module.exports = { register, login, githubRedirect, githubCallback, refresh, logout, me ,githubConnectRedirect};
