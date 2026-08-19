@@ -16,6 +16,7 @@ const createOrg = async (req, res) => {
 
 const getMyOrgs = async (req, res) => {
     try {
+        console.log("userId", req.headers['x-user-id']);
         const result = await orgService.getMyOrgs(req.headers['x-user-id']);
         res.status(200).json({ data: result });
     } catch (e) {

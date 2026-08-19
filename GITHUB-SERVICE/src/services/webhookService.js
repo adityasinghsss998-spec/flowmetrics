@@ -163,6 +163,56 @@ class WebhookService {
         }
     }
 
+    async handleWorkflowRun(payload) {
+        try {
+            const { workflow_run, repository } = payload;
+            
+            if (workflow_run.event !== 'push') return;
+            
+            const repo = await this.repoRepo.findByGithubId(repository.id);
+            if (!repo) return;
+            
+            if (workflow_run.head_branch !== repo.default_branch) return;
+            
+            let mappedStatus = null;
+            if (workflow_run.conclusion === 'success') {
+                mappedStatus = 'success';
+            } else if (workflow_run.conclusion === 'failure' || workflow_run.conclusion === 'timed_out') {
+                mappedStatus = 'failure';
+            }
+            
+            if (!mappedStatus) return;
+            
+            const calculatedDuration = this.calculateMinutesDiff(workflow_run.run_started_at, workflow_run.updated_at);
+            
+            await this.deploymentRepo.create({
+                github_deployment_id: null,
+                repo_id: repo.id,
+                environment: 'production',
+                status: mappedStatus,
+                sha: workflow_run.head_sha,
+                deployed_by_username: workflow_run.triggering_actor?.login || null,
+                deployed_at: workflow_run.run_started_at,
+                completed_at: workflow_run.updated_at,
+                build_duration_minutes: calculatedDuration
+            });
+            
+            publish(mappedStatus === 'success' ? 'deployment.completed' : 'deployment.failed', {
+                repoId: repo.id,
+                environment: 'production',
+                status: mappedStatus,
+                buildDurationMinutes: calculatedDuration,
+                deployedAt: workflow_run.run_started_at,
+                completedAt: workflow_run.updated_at
+            });
+            
+            console.log(`GitHub Actions deployment recorded: ${mappedStatus} for ${repository.full_name}`);
+        } catch (e) {
+            console.log('Error handling workflow_run webhook', e.message);
+            throw e;
+        }
+    }
+
     async handleDeployment(payload) {
         try {
             const { deployment, repository } = payload;

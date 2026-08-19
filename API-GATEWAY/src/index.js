@@ -6,17 +6,11 @@ const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const { authMiddleware } = require('./middlewares/authMiddleware');
 const { optionalAuthMiddleware } = require('./middlewares/optionalAuthMiddleware');
-
+const { githubTokenMiddleware } = require('./middlewares/githubTokenMiddleware');
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-
-// Middleware to restore req.url to req.originalUrl so the proxy forwards the full path
-const restoreUrl = (req, res, next) => {
-    req.url = req.originalUrl;
-    next();
-};
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 
@@ -56,10 +50,29 @@ app.use('/api/v1/internal', (req, res) => {
     res.status(403).json({ message: 'Forbidden' });
 });
 
+const handleProxyReq = (proxyReq, req) => {
+    if (req.headers['x-user-id']) {
+        proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+    }
+    if (req.headers['x-user-name']) {
+        proxyReq.setHeader('x-user-name', req.headers['x-user-name']);
+    }
+    if (req.headers['x-user-email']) {
+        proxyReq.setHeader('x-user-email', req.headers['x-user-email']);
+    }
+    if (req.headers['x-user-github']) {
+        proxyReq.setHeader('x-user-github', req.headers['x-user-github']);
+    }
+    if (req.headers['x-github-token']) {
+        proxyReq.setHeader('x-github-token', req.headers['x-github-token']);
+    }
+};
+
 // ─── AUTH SERVICE ─────────────────────────────────────────────────────────────
-app.use('/api/v1/auth/login', authLimiter, restoreUrl, createProxyMiddleware({
+app.use('/api/v1/auth/login', authLimiter, createProxyMiddleware({
     target: process.env.AUTH_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/auth/login' },
     on: {
         error: (err, req, res) => {
             res.status(503).json({ message: 'Auth service unavailable' });
@@ -67,9 +80,10 @@ app.use('/api/v1/auth/login', authLimiter, restoreUrl, createProxyMiddleware({
     },
 }));
 
-app.use('/api/v1/auth/register', authLimiter, restoreUrl, createProxyMiddleware({
+app.use('/api/v1/auth/register', authLimiter, createProxyMiddleware({
     target: process.env.AUTH_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/auth/register' },
     on: {
         error: (err, req, res) => {
             res.status(503).json({ message: 'Auth service unavailable' });
@@ -77,10 +91,12 @@ app.use('/api/v1/auth/register', authLimiter, restoreUrl, createProxyMiddleware(
     },
 }));
 
-app.use('/api/v1/auth', restoreUrl, createProxyMiddleware({
+app.use('/api/v1/auth', optionalAuthMiddleware, createProxyMiddleware({
     target: process.env.AUTH_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/auth/' },
     on: {
+        proxyReq: handleProxyReq,
         error: (err, req, res) => {
             res.status(503).json({ message: 'Auth service unavailable' });
         },
@@ -89,10 +105,24 @@ app.use('/api/v1/auth', restoreUrl, createProxyMiddleware({
 
 // ─── ORGS (auth-service handles orgs too) ────────────────────────────────────
 
-app.use('/api/v1/orgs', authMiddleware, restoreUrl, createProxyMiddleware({
+app.use('/api/v1/orgs', authMiddleware, createProxyMiddleware({
     target: process.env.AUTH_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/orgs/' },
     on: {
+        proxyReq: handleProxyReq,
+        error: (err, req, res) => {
+            res.status(503).json({ message: 'Auth service unavailable' });
+        },
+    },
+}));
+
+app.use('/api/v1/invitations', authMiddleware, createProxyMiddleware({
+    target: process.env.AUTH_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/invitations/' },
+    on: {
+        proxyReq: handleProxyReq,
         error: (err, req, res) => {
             res.status(503).json({ message: 'Auth service unavailable' });
         },
@@ -101,9 +131,10 @@ app.use('/api/v1/orgs', authMiddleware, restoreUrl, createProxyMiddleware({
 
 // ─── GITHUB SERVICE ───────────────────────────────────────────────────────────
 
-app.use('/api/v1/webhooks', restoreUrl, createProxyMiddleware({
+app.use('/api/v1/webhooks', createProxyMiddleware({
     target: process.env.GITHUB_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/webhooks/' },
     on: {
         error: (err, req, res) => {
             res.status(503).json({ message: 'GitHub service unavailable' });
@@ -111,10 +142,12 @@ app.use('/api/v1/webhooks', restoreUrl, createProxyMiddleware({
     },
 }));
 
-app.use('/api/v1/repos', authMiddleware, restoreUrl, createProxyMiddleware({
+app.use('/api/v1/repos', authMiddleware, githubTokenMiddleware, createProxyMiddleware({
     target: process.env.GITHUB_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/repos/' },
     on: {
+        proxyReq: handleProxyReq,
         error: (err, req, res) => {
             res.status(503).json({ message: 'GitHub service unavailable' });
         },
@@ -123,10 +156,12 @@ app.use('/api/v1/repos', authMiddleware, restoreUrl, createProxyMiddleware({
 
 // ─── ANALYTICS SERVICE ────────────────────────────────────────────────────────
 
-app.use('/api/v1/analytics', authMiddleware, restoreUrl, createProxyMiddleware({
+app.use('/api/v1/analytics', authMiddleware, createProxyMiddleware({
     target: process.env.ANALYTICS_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/analytics/' },
     on: {
+        proxyReq: handleProxyReq,
         error: (err, req, res) => {
             res.status(503).json({ message: 'Analytics service unavailable' });
         },

@@ -1,4 +1,6 @@
 const { authClient } = require('../config/axios');
+const { RepoRepository } = require('../repositories/repoRepository');
+const repoRepo = new RepoRepository();
 
 const requireOrgRole = (allowedRoles) => {
     return async (req, res, next) => {
@@ -8,7 +10,14 @@ const requireOrgRole = (allowedRoles) => {
                 return res.status(401).json({ message: 'Unauthorized' });
             }
 
-           const orgId = req.params?.orgId || req.query?.orgId || req.body?.orgId;
+            let orgId = req.params?.orgId || req.query?.orgId || req.body?.orgId;
+            if (!orgId && req.params?.id) {
+                const repo = (await repoRepo.findById(req.params.id)) || (await repoRepo.findByGithubId(req.params.id));
+                if (repo) {
+                    orgId = repo.org_id;
+                }
+            }
+
             if (!orgId) {
                 return res.status(400).json({ message: 'orgId is required' });
             } 

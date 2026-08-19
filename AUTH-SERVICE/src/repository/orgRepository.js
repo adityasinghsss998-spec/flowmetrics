@@ -80,19 +80,70 @@ class OrgRepository {
     }
     async getrole(orgId,userId){
         try{
-
-        const member=await OrgMember.findOne({
-            where:{
-                org_id:orgId,
-                user_id:userId
-            }
-        });
-        return member? member.role:null;
-    }catch(e){
-        console.log('Something went wrong at the repo layer', e);
-        throw e;
+            const member=await OrgMember.findOne({
+                where:{
+                    org_id:orgId,
+                    user_id:userId
+                }
+            });
+            return member? member.role:null;
+        }catch(e){
+            console.log('Something went wrong at the repo layer', e);
+            throw e;
+        }
     }
-}
+
+    async getMembers(orgId) {
+        try {
+            const members = await OrgMember.findAll({
+                where: { org_id: orgId },
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: ['id', 'name', 'email', 'github_username'],
+                    },
+                ],
+            });
+            return members;
+        } catch (e) {
+            console.log('Something went wrong at the repo layer', e);
+            throw e;
+        }
+    }
+
+    async removeMember(orgId, userId) {
+        try {
+            const result = await OrgMember.destroy({
+                where: {
+                    org_id: orgId,
+                    user_id: userId,
+                },
+            });
+            return result;
+        } catch (e) {
+            console.log('Something went wrong at the repo layer', e);
+            throw e;
+        }
+    }
+
+    async updateMemberRole(orgId, userId, role) {
+        try {
+            const [affectedRows] = await OrgMember.update(
+                { role },
+                {
+                    where: {
+                        org_id: orgId,
+                        user_id: userId,
+                    },
+                }
+            );
+            return affectedRows;
+        } catch (e) {
+            console.log('Something went wrong at the repo layer', e);
+            throw e;
+        }
+    }
 }
 
 module.exports = { OrgRepository };

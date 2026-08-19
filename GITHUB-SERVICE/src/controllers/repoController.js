@@ -3,6 +3,7 @@ const repoService = new RepoService();
 
 const getAvailableRepos = async (req, res) => {
     try {
+        console.log(req.headers['x-github-token']); 
         const result = await repoService.getAvailableRepos(
             req.headers['x-github-token']
         );
@@ -14,6 +15,7 @@ const getAvailableRepos = async (req, res) => {
 
 const connectRepo = async (req, res) => {
     try {
+        console.log(req.headers['x-github-token']);
         const result = await repoService.connectRepo(
             req.verifiedOrgId,
             req.headers['x-user-id'],
@@ -31,7 +33,6 @@ const connectRepo = async (req, res) => {
 
 const disconnectRepo = async (req, res) => {
     try {
-        console.log(req.params?.id);
         const repo = await repoService.getRepoById(req.params?.id);
         if (!repo) {
             return res.status(404).json({ message: 'Repository not found' });
@@ -42,12 +43,12 @@ const disconnectRepo = async (req, res) => {
                 message: 'This repository does not belong to your organization',
             });
         }
-         const accessToken=req.headers['x-github-token'] || repo.github_access_token;
+        const accessToken = req.headers['x-github-token'] || repo.github_access_token;
         await repoService.disconnectRepo(
             req.params.id,
             accessToken
         );
-        res.status(200).json({ message: 'Repository disconnected' });
+        res.status(200).json({ success: true, message: 'Repository disconnected successfully' });
     } catch (e) {
         res.status(400).json({ message: e.message });
     }
