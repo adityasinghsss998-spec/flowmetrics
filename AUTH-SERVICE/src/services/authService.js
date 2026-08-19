@@ -185,7 +185,7 @@ class AuthService {
             const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
             await this.userRepo.updateById(user.id, { refresh_token: hashedRefreshToken });
 
-            return { accessToken, refreshToken, user: payload };
+            return { accessToken, refreshToken, user: payload, githubAccessToken };
         } catch (e) {
             console.error('GitHub auth error:', e.message);
             throw e;

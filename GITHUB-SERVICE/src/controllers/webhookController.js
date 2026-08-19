@@ -28,6 +28,8 @@ const handleWebhook = async(req,res)=>{
             await webhookService.handleDeployment(req.body);
         } else if (event === 'deployment_status') {
             await webhookService.handleDeploymentStatus(req.body);
+        } else if (event === 'workflow_run') {
+            await webhookService.handleWorkflowRun(req.body);
         }
          
     } catch (e) {

@@ -54,6 +54,15 @@ const handleProxyReq = (proxyReq, req) => {
     if (req.headers['x-user-id']) {
         proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
     }
+    if (req.headers['x-user-name']) {
+        proxyReq.setHeader('x-user-name', req.headers['x-user-name']);
+    }
+    if (req.headers['x-user-email']) {
+        proxyReq.setHeader('x-user-email', req.headers['x-user-email']);
+    }
+    if (req.headers['x-user-github']) {
+        proxyReq.setHeader('x-user-github', req.headers['x-user-github']);
+    }
     if (req.headers['x-github-token']) {
         proxyReq.setHeader('x-github-token', req.headers['x-github-token']);
     }
@@ -100,6 +109,18 @@ app.use('/api/v1/orgs', authMiddleware, createProxyMiddleware({
     target: process.env.AUTH_SERVICE_URL,
     changeOrigin: true,
     pathRewrite: { '^/': '/api/v1/orgs/' },
+    on: {
+        proxyReq: handleProxyReq,
+        error: (err, req, res) => {
+            res.status(503).json({ message: 'Auth service unavailable' });
+        },
+    },
+}));
+
+app.use('/api/v1/invitations', authMiddleware, createProxyMiddleware({
+    target: process.env.AUTH_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: { '^/': '/api/v1/invitations/' },
     on: {
         proxyReq: handleProxyReq,
         error: (err, req, res) => {

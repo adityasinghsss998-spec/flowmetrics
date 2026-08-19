@@ -28,19 +28,18 @@ const githubRedirect = (req, res) => {
 
 const githubCallback = async (req, res) => {
     try {
-        const { code ,state} = req.query;
+        const { code, state } = req.query;
         if (!code) throw new Error('No code received from GitHub');
         const existingUserId = state && state !== 'login' ? parseInt(state, 10) : null;
 
         const result = await authService.handleGithubCallback(code, existingUserId);
         if (existingUserId) {
             res.redirect(`${process.env.CLIENT_URL}/settings/github?connected=true`);
+        } else {
+            res.redirect(
+                `${process.env.CLIENT_URL}/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`
+            );
         }
-        else{
-        res.redirect(
-            `${process.env.CLIENT_URL}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`
-        );
-    }
     } catch (e) {
         res.redirect(`${process.env.CLIENT_URL}/login?error=${encodeURIComponent(e.message)}`);
     }
@@ -80,7 +79,7 @@ const me = async (req, res) => {
 };
 
 const githubConnectRedirect = (req, res) => {
-    const userId = req.headers['x-user-id'];
+    const userId = req.headers['x-user-id'] || req.query?.userId;
     const params = new URLSearchParams({
         client_id: process.env.GITHUB_CLIENT_ID,
         redirect_uri: process.env.GITHUB_CALLBACK_URL,

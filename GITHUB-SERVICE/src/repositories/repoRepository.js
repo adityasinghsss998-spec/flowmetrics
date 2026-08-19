@@ -52,7 +52,7 @@ class RepoRepository {
 
     async deleteById(id) {
         try {
-            await Repository.destroy({ where: {github_repo_id:id} });
+            await Repository.destroy({ where: { id } });
         } catch (e) {
             console.log('Something went wrong at the repo layer', e);
             throw e;

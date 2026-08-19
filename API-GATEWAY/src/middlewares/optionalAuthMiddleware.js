@@ -5,10 +5,8 @@ dotenv.config();
 
 const optionalAuthMiddleware = (req, res, next) => {
     const header = req.headers['authorization'];
+    const token = header ? header.split(' ')[1] : req.query?.token;
 
-    if (!header) return next();
-
-    const token = header.split(' ')[1];
     if (!token) return next();
 
     try {
@@ -18,7 +16,6 @@ const optionalAuthMiddleware = (req, res, next) => {
         req.headers['x-user-email'] = decoded.email || '';
         req.headers['x-user-github'] = decoded.github_username || '';
     } catch (e) {
-        // invalid token — just continue without injecting headers
     }
 
     next();

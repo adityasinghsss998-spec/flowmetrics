@@ -4,7 +4,7 @@ const { PrReviewRepository } = require('../repositories/prReviewRepository');
 const { DeploymentRepository } = require('../repositories/deploymentRepository');
 const { GithubApiService } = require('./githubApiService');
 const dotenv = require('dotenv');
-
+const {Deployment}=require('../models/deployment')
 dotenv.config();
 
 class RepoService {
@@ -141,7 +141,7 @@ class RepoService {
             const deployments = await githubApi.getDeployments(owner, repo);
 
             for (const d of deployments) {
-                await this.deploymentRepo.upsert({
+                await Deployment.upsert({
                     github_deployment_id: d.id,
                     repo_id: savedRepo.id,
                     environment: d.environment || 'production',

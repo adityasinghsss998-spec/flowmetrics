@@ -1,7 +1,8 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
-const { connect } = require('./config/database');
+const { connect: connectDb } = require('./config/database');
+const { connect: connectRabbit } = require('./config/rabbitmq');
 const routes = require('./routes/v1/index');
 
 dotenv.config();
@@ -14,7 +15,6 @@ app.use((req, res, next) => {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-
 app.use('/api/v1', routes);
 
 app.get('/health', (req, res) => {
@@ -22,7 +22,8 @@ app.get('/health', (req, res) => {
 });
 
 const start = async () => {
-    await connect();
+    await connectDb();
+    await connectRabbit();
     app.listen(process.env.PORT, () => {
         console.log(`Auth service running on port ${process.env.PORT}`);
     });
