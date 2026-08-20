@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "npx nodemon src/index.js",
+  "scripts": { 
+    "dev": "nodemon src/index.js", 
+    "start": "npx sequelize-cli db:migrate && node src/index.js",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all",
