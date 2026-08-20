@@ -15,21 +15,14 @@ const githubTokenMiddleware = async (req, res, next) => {
             { timeout: 3000 }
         );
 
-        req.headers['x-github-token'] = response.data.data.github_access_token;
+        if (response.data?.data?.github_access_token) {
+            req.headers['x-github-token'] = response.data.data.github_access_token;
+        }
         next();
     } catch (e) {
-        if (e.response && e.response.status === 404) {
-            return res.status(403).json({
-                message: 'GitHub account not connected. Please connect your GitHub account first.',
-                code: 'GITHUB_NOT_CONNECTED',
-            });
-        }
-
-        if (e.code === 'ECONNABORTED') {
-            return res.status(503).json({ message: 'Auth service timeout while fetching GitHub token' });
-        }
-
-        return res.status(500).json({ message: 'Failed to fetch GitHub token' });
+        // If user has not connected GitHub (404) or auth service is temporarily slow,
+        // let the request proceed. Routes that strictly require a token will validate it.
+        next();
     }
 };
 

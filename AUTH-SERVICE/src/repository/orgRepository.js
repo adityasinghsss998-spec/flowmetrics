@@ -72,7 +72,11 @@ class OrgRepository {
             const member = await OrgMember.findOne({
                 where: { org_id: orgId, user_id: userId },
             });
-            return !!member;
+            if (member) return true;
+            const org = await Organization.findOne({
+                where: { id: orgId, owner_id: userId },
+            });
+            return !!org;
         } catch (e) {
             console.log('Something went wrong at the repo layer', e);
             throw e;
@@ -86,7 +90,12 @@ class OrgRepository {
                     user_id:userId
                 }
             });
-            return member? member.role:null;
+            if (member) return member.role;
+            const org = await Organization.findOne({
+                where: { id: orgId, owner_id: userId },
+            });
+            if (org) return 'owner';
+            return null;
         }catch(e){
             console.log('Something went wrong at the repo layer', e);
             throw e;
