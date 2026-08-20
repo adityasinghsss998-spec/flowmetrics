@@ -11,8 +11,9 @@ const requireOrgRole = (allowedRoles) => {
             }
 
             let orgId = req.params?.orgId || req.query?.orgId || req.body?.orgId;
-            if (!orgId && req.params?.id) {
-                const repo = (await repoRepo.findById(req.params.id)) || (await repoRepo.findByGithubId(req.params.id));
+            const targetRepoId = req.params?.id || req.params?.repoId;
+            if (!orgId && targetRepoId) {
+                const repo = (await repoRepo.findById(targetRepoId)) || (await repoRepo.findByGithubId(targetRepoId));
                 if (repo) {
                     orgId = repo.org_id;
                 }
@@ -29,7 +30,7 @@ const requireOrgRole = (allowedRoles) => {
 
             const  role  = response.data.data || response.data;
             
-
+           console.log(role)
             if (!allowedRoles.includes(role)) {
                 return res.status(403).json({
                     message: `Insufficient permissions. Required: ${allowedRoles.join(' or ')}. Your role: ${role}`,
