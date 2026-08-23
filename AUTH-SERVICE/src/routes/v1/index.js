@@ -19,7 +19,9 @@ router.post('/orgs/:orgId/members', orgController.inviteMember);
 
 router.post('/orgs/:orgId/invitations', memberController.sendInvitation);
 router.get('/orgs/:orgId/invitations', memberController.getInvitations);
+router.get('/invitations/pending', memberController.getMyPendingInvitations);
 router.post('/invitations/:token/accept', memberController.acceptInvitation);
+router.post('/invitations/:token', memberController.acceptInvitation);
 router.get('/orgs/:orgId/members', memberController.getMembers);
 router.delete('/orgs/:orgId/members/:userId', memberController.removeMember);
 router.patch('/orgs/:orgId/members/:userId/role', memberController.changeMemberRole);

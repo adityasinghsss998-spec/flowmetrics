@@ -179,14 +179,22 @@ class RepoService {
 
     async disconnectRepo(repoId, githubAccessToken) {
         try {
-            const repo=await this.repoRepo.findByGithubId(repoId);
-            if (repo.webhook_id) {
-                const [owner, repoName] = repo.full_name.split('/');
-                const githubApi = new GithubApiService(githubAccessToken);
-                await githubApi.deleteWebhook(owner, repoName, repo.webhook_id);
+            const repo = (await this.repoRepo.findById(repoId)) || (await this.repoRepo.findByGithubId(repoId));
+            if (!repo) {
+                throw new Error('Repository not found');
             }
 
-            await this.repoRepo.deleteById(repoId);
+            if (repo.webhook_id && githubAccessToken) {
+                const [owner, repoName] = repo.full_name.split('/');
+                const githubApi = new GithubApiService(githubAccessToken);
+                try {
+                    await githubApi.deleteWebhook(owner, repoName, repo.webhook_id);
+                } catch (webhookErr) {
+                    console.log('Failed to delete GitHub webhook, continuing disconnect:', webhookErr.message);
+                }
+            }
+
+            await this.repoRepo.deleteById(repo.id);
         } catch (e) {
             console.log('Something went wrong at the service layer', e);
             throw e;
@@ -203,13 +211,13 @@ class RepoService {
     }
 
     async getRepoById(repoId) {
-    try {
-        return await this.repoRepo.findByGithubId(repoId)
-    } catch (e) {
-        console.log('Something went wrong at the service layer', e);
-        throw e;
+        try {
+            return (await this.repoRepo.findById(repoId)) || (await this.repoRepo.findByGithubId(repoId));
+        } catch (e) {
+            console.log('Something went wrong at the service layer', e);
+            throw e;
+        }
     }
-}
 }
 
 module.exports = { RepoService };

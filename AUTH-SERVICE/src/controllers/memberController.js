@@ -53,6 +53,20 @@ class MemberController {
         }
     }
 
+    async getMyPendingInvitations(req, res) {
+        try {
+            const requestingUserId = req.headers['x-user-id'];
+            if (!requestingUserId) {
+                return res.status(401).json({ message: 'Authentication required' });
+            }
+            const invitations = await this.invitationService.getMyPendingInvitations(requestingUserId);
+            res.status(200).json({ data: invitations });
+        } catch (e) {
+            console.log('Something went wrong at the controller layer', e);
+            res.status(400).json({ message: e.message });
+        }
+    }
+
     async getMembers(req, res) {
         try {
             const orgId = req.params.orgId;
@@ -110,6 +124,7 @@ module.exports = {
     memberController,
     sendInvitation: (req, res) => memberController.sendInvitation(req, res),
     getInvitations: (req, res) => memberController.getInvitations(req, res),
+    getMyPendingInvitations: (req, res) => memberController.getMyPendingInvitations(req, res),
     acceptInvitation: (req, res) => memberController.acceptInvitation(req, res),
     getMembers: (req, res) => memberController.getMembers(req, res),
     removeMember: (req, res) => memberController.removeMember(req, res),

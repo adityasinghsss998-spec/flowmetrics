@@ -57,12 +57,26 @@ class InvitationRepository {
 
     async findPendingByEmail(email) {
         try {
+            const emailCondition = Array.isArray(email) ? { [Op.in]: email } : email;
             const invitations = await Invitation.findAll({
                 where: {
-                    email,
+                    email: emailCondition,
                     status: 'pending',
                     expires_at: { [Op.gt]: new Date() },
                 },
+                include: [
+                    {
+                        model: Organization,
+                        as: 'organization',
+                        attributes: ['id', 'name', 'slug', 'github_org_name'],
+                    },
+                    {
+                        model: User,
+                        as: 'inviter',
+                        attributes: ['id', 'name', 'email', 'avatar_url'],
+                    },
+                ],
+                order: [['created_at', 'DESC']],
             });
             return invitations;
         } catch (e) {

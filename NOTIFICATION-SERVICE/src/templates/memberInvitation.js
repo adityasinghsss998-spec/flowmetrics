@@ -1,6 +1,7 @@
 const generateMemberInvitationHtml = (data) => {
     const { orgName, inviterName, role, token, expiresAt } = data;
-    const acceptUrl = `http://localhost:3001/invitations/${token}/accept`;
+    const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:3001';
+    const acceptUrl = `${clientUrl.replace(/\/$/, '')}/invitations/${token}/accept`;
     const formattedExpiry = expiresAt ? new Date(expiresAt).toLocaleDateString() : '7 days';
 
     return `

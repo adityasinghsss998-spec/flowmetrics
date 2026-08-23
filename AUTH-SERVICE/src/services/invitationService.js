@@ -1,3 +1,4 @@
+const axios = require('axios');
 const crypto = require('crypto');
 const { InvitationRepository } = require('../repository/invitationRepository');
 const { OrgRepository } = require('../repository/orgRepository');
@@ -17,12 +18,13 @@ class InvitationService {
 
     async sendInvitation(orgId, invitedBy, email, role = 'member') {
         try {
+            const normalizedEmail = email.trim().toLowerCase();
             const requesterRole = await this.orgRepo.getrole(orgId, invitedBy);
             if (!requesterRole || !['owner', 'admin'].includes(requesterRole)) {
                 throw new Error('Insufficient permissions to invite members');
             }
 
-            const existingUser = await this.userRepo.findByEmail(email);
+            const existingUser = await this.userRepo.findByEmail(normalizedEmail);
             if (existingUser) {
                 const isAlreadyMember = await this.orgRepo.isMember(orgId, existingUser.id);
                 if (isAlreadyMember) {
@@ -36,7 +38,7 @@ class InvitationService {
             const invitation = await this.invitationRepo.create({
                 org_id: orgId,
                 invited_by: invitedBy,
-                email,
+                email: normalizedEmail,
                 role,
                 token,
                 status: 'pending',
@@ -47,7 +49,7 @@ class InvitationService {
             const inviter = await this.userRepo.findById(invitedBy);
 
             publish('member.invited', {
-                recipientEmail: email,
+                recipientEmail: normalizedEmail,
                 orgId,
                 orgName: org ? org.name : 'Organization',
                 inviterName: inviter ? inviter.name : 'Team Member',
@@ -84,8 +86,35 @@ class InvitationService {
                 throw new Error('User not found');
             }
 
-            if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-                throw new Error('Logged in user email does not match invitation recipient');
+            const invEmail = (invitation.email || '').toLowerCase().trim();
+            const userEmail = (user.email || '').toLowerCase().trim();
+
+            let isEmailMatched = userEmail === invEmail;
+
+            // If not directly matching, check user's GitHub verified emails if available
+            if (!isEmailMatched && user.github_access_token) {
+                try {
+                    const ghEmailsRes = await axios.get('https://api.github.com/user/emails', {
+                        headers: {
+                            Authorization: `Bearer ${user.github_access_token}`,
+                            Accept: 'application/vnd.github+json',
+                        },
+                        timeout: 5000,
+                    });
+                    const verifiedEmails = (ghEmailsRes.data || [])
+                        .filter((e) => e.verified)
+                        .map((e) => (e.email || '').toLowerCase().trim());
+
+                    if (verifiedEmails.includes(invEmail)) {
+                        isEmailMatched = true;
+                    }
+                } catch (ghErr) {
+                    console.log('Failed to fetch GitHub emails for comparison:', ghErr.message);
+                }
+            }
+
+            if (!isEmailMatched) {
+                throw new Error(`Logged in user email (${user.email}) does not match invitation recipient (${invitation.email})`);
             }
 
             const isAlreadyMember = await this.orgRepo.isMember(invitation.org_id, userId);
@@ -98,7 +127,58 @@ class InvitationService {
             return {
                 orgId: invitation.org_id,
                 role: invitation.role,
+                orgName: invitation.organization ? invitation.organization.name : undefined,
             };
+        } catch (e) {
+            console.log('Something went wrong at the service layer', e);
+            throw e;
+        }
+    }
+
+    async getMyPendingInvitations(userId) {
+        try {
+            const user = await this.userRepo.findById(userId);
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            const emailsToQuery = new Set();
+            if (user.email) {
+                emailsToQuery.add(user.email.toLowerCase().trim());
+            }
+
+            if (user.github_access_token) {
+                try {
+                    const ghEmailsRes = await axios.get('https://api.github.com/user/emails', {
+                        headers: {
+                            Authorization: `Bearer ${user.github_access_token}`,
+                            Accept: 'application/vnd.github+json',
+                        },
+                        timeout: 5000,
+                    });
+                    (ghEmailsRes.data || [])
+                        .filter((e) => e.verified)
+                        .forEach((e) => emailsToQuery.add((e.email || '').toLowerCase().trim()));
+                } catch (ghErr) {
+                    console.log('Failed to fetch GitHub emails for pending invitations list:', ghErr.message);
+                }
+            }
+
+            const invitations = await this.invitationRepo.findPendingByEmail(Array.from(emailsToQuery));
+
+            return invitations.map((inv) => ({
+                id: inv.id,
+                org_id: inv.org_id,
+                org_name: inv.organization ? inv.organization.name : 'Organization',
+                org_slug: inv.organization ? inv.organization.slug : '',
+                role: inv.role,
+                token: inv.token,
+                email: inv.email,
+                invited_by_name: inv.inviter ? inv.inviter.name : 'Team Member',
+                invited_by_email: inv.inviter ? inv.inviter.email : '',
+                expires_at: inv.expires_at,
+                created_at: inv.created_at,
+            }));
         } catch (e) {
             console.log('Something went wrong at the service layer', e);
             throw e;
