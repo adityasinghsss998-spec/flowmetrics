@@ -45,7 +45,7 @@ const disconnectRepo = async (req, res) => {
         }
         const accessToken = req.headers['x-github-token'] || repo.github_access_token;
         await repoService.disconnectRepo(
-            req.params.id,
+            repo.id,
             accessToken
         );
         res.status(200).json({ success: true, message: 'Repository disconnected successfully' });
