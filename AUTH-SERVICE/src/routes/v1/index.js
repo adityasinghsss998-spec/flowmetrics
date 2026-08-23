@@ -28,5 +28,6 @@ router.get('/internal/orgs/:orgId/members/:userId/role', orgController.getRole);
 
 router.get('/auth/github/connect', authController.githubConnectRedirect);
 router.get('/internal/users/:userId/github-token', internalController.getUserGithubToken);
+router.get('/internal/users/:userId', internalController.getUserById);
 
 module.exports = router; 
