@@ -906,13 +906,7 @@ Frontend              Vercel (free)     Auto-deploy from GitHub
 Keep-alive            UptimeRobot       Pings /health every 5 min
 ```
 
-### Planned: Oracle Cloud Always Free VM
 
-Single Ubuntu VM (4 ARM cores, 24GB RAM, free forever) running all services
-via Docker Compose. One thing to manage instead of eight separate services.
-Requires a credit card for Oracle signup (card never charged on Always Free tier).
-
----
 
 ## Author
 
