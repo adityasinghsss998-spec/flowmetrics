@@ -1,5 +1,6 @@
 cat > /mnt/user-data/outputs/README.md << 'READMEEOF'
 <div align="center">
+<img width="1635" height="1197" alt="flowmetrics_current" src="https://github.com/user-attachments/assets/2cf5a55c-ec79-43ff-9bc4-f20aef3feadc" />
 
 <img src="https://img.shields.io/badge/Status-Live%20%26%20Deployed-brightgreen?style=for-the-badge" />
 <img src="https://img.shields.io/badge/Architecture-Microservices-6366f1?style=for-the-badge" />
