@@ -30,7 +30,11 @@ const githubCallback = async (req, res) => {
     try {
         const { code, state } = req.query;
         if (!code) throw new Error('No code received from GitHub');
-        const existingUserId = state && state !== 'login' ? parseInt(state, 10) : null;
+
+        // Only parse state as an existingUserId if state is explicitly numeric (from connect?userId=...)
+        const parsedState = state ? parseInt(state, 10) : NaN;
+        const isNumericState = /^\d+$/.test(String(state).trim());
+        const existingUserId = isNumericState && !isNaN(parsedState) ? parsedState : null;
 
         const result = await authService.handleGithubCallback(code, existingUserId);
         if (existingUserId) {
@@ -83,8 +87,9 @@ const githubConnectRedirect = (req, res) => {
     const params = new URLSearchParams({
         client_id: process.env.GITHUB_CLIENT_ID,
         redirect_uri: process.env.GITHUB_CALLBACK_URL,
-        scope: 'repo read:org user:email',
+        scope: 'repo read:org user:email write:repo_hook',
         state: String(userId),
+        prompt: 'select_account',
     });
     res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
 };

@@ -116,6 +116,30 @@ class GithubApiService {
             });
             return res.data;
         } catch (e) {
+            // 422 = webhook already exists on GitHub (stale from previous connection).
+            // Try to find and return the existing hook with our URL so we can store
+            // its id and eventually delete it on disconnect.
+            if (e.response && e.response.status === 422) {
+                console.log('Webhook already exists on GitHub, attempting to reuse existing hook...');
+                try {
+                    const listRes = await this.client.get(`/repos/${owner}/${repo}/hooks`);
+                    if (Array.isArray(listRes.data)) {
+                        const existing = listRes.data.find(
+                            (h) => h.config && h.config.url === webhookUrl
+                        );
+                        if (existing) {
+                            console.log(`Reusing existing webhook id=${existing.id}`);
+                            return existing;
+                        }
+                    }
+                } catch (listErr) {
+                    console.log('Could not list hooks to reuse:', listErr.message);
+                }
+                // If we cannot list or find the hook, return a placeholder so the
+                // repo is still saved to the DB (webhook_id will be null).
+                console.log('Returning placeholder webhook — webhook_id will be null.');
+                return { id: null };
+            }
             console.log('GitHub API error creating webhook', e.message);
             throw e;
         }
