@@ -46,9 +46,36 @@ class RepoService {
 
             const [owner, repo] = fullName.split('/');
             const repoData = await githubApi.getRepo(owner, repo);
-
             const existing = await this.repoRepo.findByGithubId(repoData.id);
-            if (existing) throw new Error('Repository already connected');
+            if (existing) {
+                if (existing.org_id === orgId) {
+                    throw new Error('Repository already connected');
+                }
+
+                // If already connected to another organization, reassign it to the target orgId
+                // preserving all existing historical data (PRs, reviews, commits, deployments)
+                const webhookUrl = `${process.env.WEBHOOK_BASE_URL}/api/v1/webhooks/github`;
+                const webhook = await githubApi.createWebhook(
+                    owner,
+                    repo,
+                    webhookUrl,
+                    process.env.GITHUB_WEBHOOK_SECRET
+                );
+
+                await this.repoRepo.updateById(existing.id, {
+                    org_id: orgId,
+                    owner_id: ownerId,
+                    webhook_id: webhook.id || existing.webhook_id,
+                    github_access_token: githubAccessToken,
+                });
+
+                const updatedRepo = await this.repoRepo.findById(existing.id);
+
+                this.syncHistoricalData(updatedRepo, githubApi, owner, repo)
+                    .catch((err) => console.log('Background sync error:', err.message));
+
+                return updatedRepo;
+            }
 
             const webhookUrl = `${process.env.WEBHOOK_BASE_URL}/api/v1/webhooks/github`;
             const webhook = await githubApi.createWebhook(

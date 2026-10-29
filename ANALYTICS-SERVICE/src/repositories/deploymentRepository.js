@@ -47,7 +47,7 @@ class DeploymentRepository {
                     ROUND(AVG(build_duration_minutes), 2) as avg_build_minutes,
                     ROUND(MIN(build_duration_minutes), 2) as fastest_build_minutes,
                     ROUND(MAX(build_duration_minutes), 2) as slowest_build_minutes,
-                    ROUND(AVG(build_duration_minutes) OVER (
+                    ROUND(AVG(AVG(build_duration_minutes)) OVER (
                         ORDER BY YEARWEEK(deployed_at, 1)
                         ROWS BETWEEN 3 PRECEDING AND CURRENT ROW
                     ), 2) as rolling_4week_avg_minutes

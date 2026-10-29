@@ -4,7 +4,7 @@ const { connect } = require('./config/rabbitmq');
 const weeklyDigestConsumer = require('./consumers/weeklyDigestConsumer');
 const anomalyConsumer = require('./consumers/anomalyConsumer');
 const invitationConsumer = require('./consumers/invitationConsumer');
-
+const aiDigestConsumer = require('./consumers/aiDigestConsumer');
 const app = express();
 const PORT = process.env.PORT || 3006;
 
@@ -23,6 +23,7 @@ const start = async () => {
     await weeklyDigestConsumer.start();
     await anomalyConsumer.start();
     await invitationConsumer.start();
+    await aiDigestConsumer.start();
 
     console.log('Notification Service running — all consumers active');
   } catch (e) {

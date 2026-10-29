@@ -6,7 +6,14 @@ const userRepo = new UserRepository();
 const getUserGithubToken = async (req, res) => {
     try {
         const { userId } = req.params;
-        const token = await getGithubToken(userId);
+        let token = await getGithubToken(userId);
+
+        if (!token) {
+            const user = await userRepo.findById(userId);
+            if (user?.github_access_token) {
+                token = user.github_access_token;
+            }
+        }
 
         if (!token) {
             return res.status(404).json({

@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 const { authMiddleware } = require('./middlewares/authMiddleware');
 const { optionalAuthMiddleware } = require('./middlewares/optionalAuthMiddleware');
 const { githubTokenMiddleware } = require('./middlewares/githubTokenMiddleware');
+const { aiAllowlistMiddleware } = require('./middlewares/aiAllowlistMiddleware');
 dotenv.config();
 
 const app = express();
@@ -164,6 +165,49 @@ app.use('/api/v1/analytics', authMiddleware, createProxyMiddleware({
         proxyReq: handleProxyReq,
         error: (err, req, res) => {
             res.status(503).json({ message: 'Analytics service unavailable' });
+        },
+    },
+}));
+// ─── AI SERVICE ───────────────────────────────────────────────────────────────
+
+if (!process.env.AI_INTERNAL_KEY) {
+    console.warn('AI_INTERNAL_KEY is not set. The AI service will reject every request.');
+}
+
+const handleAiProxyReq = (proxyReq, req) => {
+    // The AI service never needs the login token, cookies or the GitHub token. Do not send them.
+    proxyReq.removeHeader('authorization');
+    proxyReq.removeHeader('cookie');
+    proxyReq.removeHeader('x-github-token');
+    proxyReq.removeHeader('x-user-name');
+    proxyReq.removeHeader('x-user-email');
+    proxyReq.removeHeader('x-user-github');
+    proxyReq.removeHeader('x-org-id');
+
+    // authMiddleware already put the user id from the verified token into req.headers.
+    // setHeader replaces any value a browser tried to send for the same header.
+    proxyReq.setHeader('x-user-id', String(req.headers['x-user-id']));
+
+    // This proves to the AI service that the request came through the gateway.
+    proxyReq.setHeader('x-internal-key', process.env.AI_INTERNAL_KEY || '');
+};
+
+app.use('/api/v1/ai', authMiddleware, aiAllowlistMiddleware, createProxyMiddleware({
+    target: process.env.AI_SERVICE_URL,
+    changeOrigin: true,
+    // A question can take up to 80 seconds inside the AI service. Wait a little longer than that,
+    // so the AI service's own timeout message arrives first.
+    proxyTimeout: 90000,
+    timeout: 90000,
+    on: {
+        proxyReq: handleAiProxyReq,
+        error: (err, req, res) => {
+            console.log('AI service proxy error:', err.message);
+            if (res.headersSent) {
+                return;
+            }
+            // The frontend reads fallback: true and hides the AI panel gracefully.
+            res.status(503).json({ message: 'AI service unavailable', fallback: true });
         },
     },
 }));

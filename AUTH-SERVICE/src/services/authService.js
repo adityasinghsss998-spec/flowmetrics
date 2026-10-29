@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const dotenv = require('dotenv');
 const crypto = require('crypto');
-const {UserRepository}=require('../repository/userRepository')
-const {OrgRepository}=require('../repository/orgRepository')
+const { UserRepository } = require('../repository/userRepository')
+const { OrgRepository } = require('../repository/orgRepository')
 const { setGithubToken } = require('../config/redis');
 dotenv.config();
 
@@ -83,14 +83,16 @@ class AuthService {
         const params = new URLSearchParams({
             client_id: process.env.GITHUB_CLIENT_ID,
             redirect_uri: process.env.GITHUB_CALLBACK_URL,
-            scope: 'repo read:org user:email',
+        scope: 'repo read:org user:email write:repo_hook',
             state: state || crypto.randomBytes(16).toString('hex'),
+            prompt: 'select_account',
         });
         return `https://github.com/login/oauth/authorize?${params.toString()}`;
     }
 
     async handleGithubCallback(code, existingUserId = null) {
         try {
+            console.log('[AUTH] handleGithubCallback starting. existingUserId:', existingUserId);
             const tokenRes = await axios.post(
                 'https://github.com/login/oauth/access_token',
                 {
@@ -116,19 +118,32 @@ class AuthService {
             });
 
             const githubProfile = profileRes.data;
-            let user;
+            console.log('[AUTH] GitHub profile received:', { id: githubProfile?.id, login: githubProfile?.login });
+            let user = null;
 
             if (existingUserId) {
-                user = await this.userRepo.updateById(existingUserId, {
+                // If this GitHub account is already linked to another user, unbind it first
+                const existingOwner = await this.userRepo.findByGithubId(githubProfile.id);
+                if (existingOwner && existingOwner.id !== existingUserId) {
+                    await this.userRepo.updateById(existingOwner.id, {
+                        github_id: null,
+                        github_username: null,
+                        github_access_token: null,
+                        avatar_url: null,
+                    });
+                }
+
+                await this.userRepo.updateById(existingUserId, {
                     github_id: githubProfile.id,
                     github_username: githubProfile.login,
                     github_access_token: githubAccessToken,
                     avatar_url: githubProfile.avatar_url,
                 });
+                user = await this.userRepo.findById(existingUserId);
             } else {
-                user = await this.userRepo.findByGithubId(githubProfile.id);
+                let existingByGithub = await this.userRepo.findByGithubId(githubProfile.id);
 
-                if (!user) {
+                if (!existingByGithub) {
                     const emailRes = await axios.get('https://api.github.com/user/emails', {
                         headers: {
                             Authorization: `Bearer ${githubAccessToken}`,
@@ -137,21 +152,22 @@ class AuthService {
                         timeout: REQUEST_TIMEOUT,
                     });
 
-                    const verifiedPrimaryEmail = emailRes.data.find(
+                    const verifiedPrimaryEmail = emailRes.data?.find(
                         (e) => e.primary && e.verified
                     )?.email;
 
                     if (verifiedPrimaryEmail) {
-                        user = await this.userRepo.findByEmail(verifiedPrimaryEmail);
+                        existingByGithub = await this.userRepo.findByEmail(verifiedPrimaryEmail);
                     }
 
-                    if (user) {
-                        user = await this.userRepo.updateById(user.id, {
+                    if (existingByGithub) {
+                        await this.userRepo.updateById(existingByGithub.id, {
                             github_id: githubProfile.id,
                             github_username: githubProfile.login,
                             github_access_token: githubAccessToken,
                             avatar_url: githubProfile.avatar_url,
                         });
+                        user = await this.userRepo.findById(existingByGithub.id);
                     } else {
                         user = await this.userRepo.create({
                             name: githubProfile.name || githubProfile.login,
@@ -163,11 +179,17 @@ class AuthService {
                         });
                     }
                 } else {
-                    user = await this.userRepo.updateById(user.id, {
+                    await this.userRepo.updateById(existingByGithub.id, {
+                        github_username: githubProfile.login,
                         github_access_token: githubAccessToken,
                         avatar_url: githubProfile.avatar_url,
                     });
+                    user = await this.userRepo.findById(existingByGithub.id);
                 }
+            }
+
+            if (!user) {
+                throw new Error('User account could not be found or created after GitHub authentication');
             }
 
             await setGithubToken(user.id, githubAccessToken);
@@ -187,7 +209,7 @@ class AuthService {
 
             return { accessToken, refreshToken, user: payload, githubAccessToken };
         } catch (e) {
-            console.error('GitHub auth error:', e.message);
+            console.error('GitHub auth error stack:', e);
             throw e;
         }
     }
