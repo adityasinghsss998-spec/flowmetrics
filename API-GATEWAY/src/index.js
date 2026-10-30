@@ -215,6 +215,22 @@ app.use('/api/v1/ai', authMiddleware, aiAllowlistMiddleware, createProxyMiddlewa
 // ─── HEALTH ───────────────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => {
+    const services = [
+        { name: 'auth', url: process.env.AUTH_SERVICE_URL },
+        { name: 'github', url: process.env.GITHUB_SERVICE_URL },
+        { name: 'analytics', url: process.env.ANALYTICS_SERVICE_URL },
+        { name: 'ai', url: process.env.AI_SERVICE_URL }, // Keep the AI service warm too!
+    ];
+
+    // Fire pings in parallel — don't wait for results
+    // Just wakes them up, doesn't block the health response
+    services.forEach(({ url }) => {
+        // Node 18+ has native fetch. If using an older version, you may need to require('node-fetch') or axios.
+        if (url) {
+            fetch(`${url}/health`).catch(() => {});
+        }
+    });
+
     res.status(200).json({
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -222,14 +238,7 @@ app.get('/health', (req, res) => {
             auth: process.env.AUTH_SERVICE_URL,
             github: process.env.GITHUB_SERVICE_URL,
             analytics: process.env.ANALYTICS_SERVICE_URL,
-            dashboard: process.env.DASHBOARD_SERVICE_URL,
+            ai: process.env.AI_SERVICE_URL,
         },
     });
-});
-
-// ─── START ────────────────────────────────────────────────────────────────────
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`API Gateway running on port ${PORT}`);
 });
