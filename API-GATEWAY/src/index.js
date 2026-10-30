@@ -13,6 +13,10 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// Trust the one proxy in front of us (Render), so rate limiting sees each visitor's real IP
+// instead of treating every visitor as the same person.
+app.set('trust proxy', 1);
+
 // ─── CORS ────────────────────────────────────────────────────────────────────
 
 app.use(cors({
@@ -32,7 +36,13 @@ const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 300,
     message: { message: 'Too many requests, please try again later' },
-    skip: () => process.env.NODE_ENV !== 'production',
+    skip: (req) => {
+        if (process.env.NODE_ENV !== 'production') {
+            return true;
+        }
+        // Checking on an AI answer happens every few seconds. The AI service limits it itself.
+        return req.originalUrl.startsWith('/api/v1/ai/runs/');
+    },
 });
 
 const authLimiter = rateLimit({
@@ -168,6 +178,7 @@ app.use('/api/v1/analytics', authMiddleware, createProxyMiddleware({
         },
     },
 }));
+
 // ─── AI SERVICE ───────────────────────────────────────────────────────────────
 
 if (!process.env.AI_INTERNAL_KEY) {
@@ -195,8 +206,8 @@ const handleAiProxyReq = (proxyReq, req) => {
 app.use('/api/v1/ai', authMiddleware, aiAllowlistMiddleware, createProxyMiddleware({
     target: process.env.AI_SERVICE_URL,
     changeOrigin: true,
-    // A question can take up to 80 seconds inside the AI service. Wait a little longer than that,
-    // so the AI service's own timeout message arrives first.
+    // Starting a question and checking on it are both quick calls now. The long wait is the
+    // AI service waking up from sleep on Render (up to about a minute), so allow for that.
     proxyTimeout: 90000,
     timeout: 90000,
     on: {
@@ -212,33 +223,53 @@ app.use('/api/v1/ai', authMiddleware, aiAllowlistMiddleware, createProxyMiddlewa
     },
 }));
 
-// ─── HEALTH ───────────────────────────────────────────────────────────────────
+// ─── HEALTH AND WARM-UP ───────────────────────────────────────────────────────
 
+// /health is cheap and wakes nothing. It does not expose any service addresses.
 app.get('/health', (req, res) => {
-    const services = [
-        { name: 'auth', url: process.env.AUTH_SERVICE_URL },
-        { name: 'github', url: process.env.GITHUB_SERVICE_URL },
-        { name: 'analytics', url: process.env.ANALYTICS_SERVICE_URL },
-        { name: 'ai', url: process.env.AI_SERVICE_URL }, // Keep the AI service warm too!
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// How long to wait before waking the other services again, however many requests arrive.
+const WARM_UP_INTERVAL_MS = 5 * 60 * 1000;
+let lastWarmUpTime = 0;
+
+const wakeDownstreamServices = () => {
+    const now = Date.now();
+    if (now - lastWarmUpTime < WARM_UP_INTERVAL_MS) {
+        return;
+    }
+    lastWarmUpTime = now;
+
+    const serviceUrls = [
+        process.env.AUTH_SERVICE_URL,
+        process.env.GITHUB_SERVICE_URL,
+        process.env.ANALYTICS_SERVICE_URL,
+        process.env.DASHBOARD_SERVICE_URL,
+        process.env.NOTIFICATION_SERVICE_URL,
+        process.env.AI_SERVICE_URL,
     ];
 
-    // Fire pings in parallel — don't wait for results
-    // Just wakes them up, doesn't block the health response
-    services.forEach(({ url }) => {
-        // Node 18+ has native fetch. If using an older version, you may need to require('node-fetch') or axios.
-        if (url) {
-            fetch(`${url}/health`).catch(() => {});
+    for (let i = 0; i < serviceUrls.length; i++) {
+        const url = serviceUrls[i];
+        if (!url) {
+            continue;
         }
-    });
+        // We do not wait for the answer. The request alone wakes a sleeping service.
+        // Any answer, even "not found", counts. The timeout stops requests piling up.
+        fetch(url + '/', { signal: AbortSignal.timeout(65000) }).catch(() => {});
+    }
+};
 
-    res.status(200).json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        services: {
-            auth: process.env.AUTH_SERVICE_URL,
-            github: process.env.GITHUB_SERVICE_URL,
-            analytics: process.env.ANALYTICS_SERVICE_URL,
-            ai: process.env.AI_SERVICE_URL,
-        },
-    });
+// The website calls this when a visitor opens it. A monitor can call it too (see the notes).
+app.get('/warmup', (req, res) => {
+    wakeDownstreamServices();
+    res.status(200).json({ status: 'warming' });
+});
+
+// ─── START ────────────────────────────────────────────────────────────────────
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`API Gateway running on port ${PORT}`);
 });
