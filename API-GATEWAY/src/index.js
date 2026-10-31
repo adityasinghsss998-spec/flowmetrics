@@ -19,8 +19,27 @@ app.set('trust proxy', 1);
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 
+// CLIENT_URL is the primary production origin. We also accept all Vercel
+// preview deployments for this project so branch previews can call the API
+// without needing a Render env-var update for every new Vercel preview URL.
+const ALLOWED_ORIGINS = [
+    process.env.CLIENT_URL || 'http://localhost:3001',
+    // All flowmetrics-frontend Vercel deployments (production + branch previews)
+    /^https:\/\/flowmetrics-frontend(-[a-z0-9-]+)?\.vercel\.app$/,
+    // Any localhost port for local development
+    /^http:\/\/localhost:\d+$/,
+];
+
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3001',
+    origin: (origin, callback) => {
+        // Allow requests with no Origin header (server-to-server, curl, etc.)
+        if (!origin) return callback(null, true);
+        const allowed = ALLOWED_ORIGINS.some((o) =>
+            o instanceof RegExp ? o.test(origin) : o === origin
+        );
+        if (allowed) return callback(null, true);
+        callback(new Error('CORS: origin not allowed: ' + origin));
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
         'Authorization',
