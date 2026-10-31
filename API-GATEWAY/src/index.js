@@ -40,6 +40,10 @@ const globalLimiter = rateLimit({
         if (process.env.NODE_ENV !== 'production') {
             return true;
         }
+        // Health check and warmup routes should never count against the rate limit
+        if (req.path === '/health' || req.path === '/warmup') {
+            return true;
+        }
         // Checking on an AI answer happens every few seconds. The AI service limits it itself.
         return req.originalUrl.startsWith('/api/v1/ai/runs/');
     },
