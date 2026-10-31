@@ -231,6 +231,7 @@ app.use('/api/v1/ai', authMiddleware, aiAllowlistMiddleware, createProxyMiddlewa
 
 // /health is cheap and wakes nothing. It does not expose any service addresses.
 app.get('/health', (req, res) => {
+    wakeDownstreamServices();
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -261,7 +262,7 @@ const wakeDownstreamServices = () => {
         }
         // We do not wait for the answer. The request alone wakes a sleeping service.
         // Any answer, even "not found", counts. The timeout stops requests piling up.
-        fetch(url + '/', { signal: AbortSignal.timeout(65000) }).catch(() => {});
+        fetch(url + '/health', { signal: AbortSignal.timeout(65000) }).catch(() => {});
     }
 };
 
