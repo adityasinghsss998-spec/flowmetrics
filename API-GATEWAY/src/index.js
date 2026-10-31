@@ -139,7 +139,7 @@ app.use('/api/v1/auth', optionalAuthMiddleware, createProxyMiddleware({
 
 // ─── ORGS (auth-service handles orgs too) ────────────────────────────────────
 
-app.use('/api/v1/orgs', authMiddleware, createProxyMiddleware({
+app.use(['/api/v1/orgs', '/api/v1/organizations'], authMiddleware, createProxyMiddleware({
     target: process.env.AUTH_SERVICE_URL,
     changeOrigin: true,
     pathRewrite: { '^/': '/api/v1/orgs/' },
