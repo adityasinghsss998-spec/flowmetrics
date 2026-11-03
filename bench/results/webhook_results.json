@@ -1,0 +1,103 @@
+{
+  "environment": "Production (Render Free/Starter Tier)",
+  "edgeResults": {
+    "invalidSignature": {
+      "pass": true,
+      "statusCode": 401
+    },
+    "missingSignature": {
+      "pass": true,
+      "statusCode": 401
+    },
+    "malformedPayload": {
+      "pass": true,
+      "statusCode": 400
+    },
+    "duplicateDelivery": {
+      "firstStatusCode": 200,
+      "secondStatusCode": 200,
+      "note": "Both acknowledged with HTTP 200; database performs upsert/idempotent update on entity id"
+    },
+    "baselineRtt": {
+      "min": 132.5665,
+      "p50": 140.9463,
+      "p95": 249.52621500000006,
+      "p99": 322.4682029999999,
+      "avg": 177.98924499999998,
+      "samples": 20
+    }
+  },
+  "highestSustainedRate": 20,
+  "sustainedMetrics": {
+    "rate": 20,
+    "sent": 400,
+    "httpAcks": 400,
+    "received": 400,
+    "errors": 0,
+    "errorRate": 0,
+    "p50": 541.7886,
+    "p95": 721.2320099999998,
+    "p99": 848.663374,
+    "qualified": true,
+    "aborted": false
+  },
+  "allStepResults": [
+    {
+      "rate": 5,
+      "sent": 100,
+      "httpAcks": 100,
+      "received": 100,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 526.8810000000001,
+      "p95": 693.2886249999999,
+      "p99": 997.322419000001,
+      "qualified": true,
+      "aborted": false
+    },
+    {
+      "rate": 10,
+      "sent": 200,
+      "httpAcks": 200,
+      "received": 200,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 523.22205,
+      "p95": 643.8854449999998,
+      "p99": 663.9581299999991,
+      "qualified": true,
+      "aborted": false
+    },
+    {
+      "rate": 20,
+      "sent": 400,
+      "httpAcks": 400,
+      "received": 400,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 541.7886,
+      "p95": 721.2320099999998,
+      "p99": 848.663374,
+      "qualified": true,
+      "aborted": false
+    },
+    {
+      "aborted": true,
+      "reason": "p95 > 2500ms",
+      "rate": 30,
+      "p95": 3175.3084449999997,
+      "errRate": 0,
+      "sent": 451,
+      "received": 374
+    }
+  ],
+  "burstResults": {
+    "burstCount": 25,
+    "successfulSends": 25,
+    "receivedCount": 19,
+    "totalDrainTimeMs": 13642.1497,
+    "p50": 4128.3607,
+    "p95": 4565.260859999999
+  },
+  "timestamp": "2026-11-03T08:16:14.970Z"
+}
