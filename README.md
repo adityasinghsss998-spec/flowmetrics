@@ -9,6 +9,8 @@ cat > /mnt/user-data/outputs/README.md << 'READMEEOF'
 <img src="https://img.shields.io/badge/Architecture-Microservices-6366f1?style=for-the-badge" />
 <img src="https://img.shields.io/badge/Services-6%20Independent-0d9488?style=for-the-badge" />
 <img src="https://img.shields.io/badge/AI%20Integration-Coming%20Soon-f59e0b?style=for-the-badge" />
+<img width="1408" height="727" alt="Screenshot 2026-11-05 152526" src="https://github.com/user-attachments/assets/bcc69657-349a-4411-994f-2a5b19d8c6d9" />
+<img width="1545" height="747" alt="Screenshot 2026-11-05 152145" src="https://github.com/user-attachments/assets/22a6ea32-8c1f-4405-b4b5-4fd93ff1b132" />
 
 <br />
 <br />
